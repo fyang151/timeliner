@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timeliner</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    #grid-wrap {
+      margin: 20px;
+    }
+
+    .segment {
+      overflow: hidden;
+    }
+
+    .seg-label {
+      padding: 0 10px;
+      font-size: 1rem;
+      font-weight: 500;
+      color: white;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tick-labels {
+      margin-top: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="grid-wrap">
+    <div id="grid"></div>
+    <div id="time-indicator"></div>
+    <div id="tick-labels" class="tick-labels"></div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+    const state = decodeState(location.hash);
+    if (!state) {document.body.innerHTML = '<p>No timeline data.</p>'; throw new Error('no data');}
+
+    const {start, end, interval, rows} = state;
+    const startMin = timeToMinutes(start);
+    const endMin = timeToMinutes(end);
+    const cellCount = Math.floor(spanDuration(startMin, endMin) / interval);
+
+    const grid = document.getElementById('grid');
+    (rows || []).forEach(row => {
+      const wrap = document.createElement('div');
+      wrap.className = 'row-wrap';
+      wrap.appendChild(buildRowBackground(cellCount));
+
+      (row.segments || []).forEach(seg => {
+        const from = Math.min(seg.from, seg.to);
+        const to = Math.max(seg.from, seg.to);
+        const el = document.createElement('div');
+        el.className = 'segment';
+        el.style.left = (from / cellCount * 100) + '%';
+        el.style.width = ((to - from + 1) / cellCount * 100) + '%';
+        el.style.background = seg.color;
+        if (seg.label) {
+          const lbl = document.createElement('span');
+          lbl.className = 'seg-label';
+          lbl.textContent = seg.label;
+          el.appendChild(lbl);
+        }
+        wrap.appendChild(el);
+      });
+
+      grid.appendChild(wrap);
+    });
+
+    buildTickLabels(document.getElementById('tick-labels'), startMin, cellCount, interval);
+
+    const indicator = document.getElementById('time-indicator');
+    function tick() {
+      const now = new Date();
+      updateTimeIndicator(indicator, startMin, endMin, now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60);
+    }
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+
+</html>
