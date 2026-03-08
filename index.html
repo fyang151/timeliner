@@ -25,7 +25,25 @@
     .segment {
       z-index: 1;
       overflow: visible;
+      cursor: grab;
     }
+
+    .segment.selected {
+      box-shadow: 0 0 0 2.5px rgba(0,0,0,0.45);
+      z-index: 200;
+    }
+
+    .resize-handle {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 8px;
+      cursor: ew-resize;
+      z-index: 2;
+    }
+
+    .resize-left { left: 0; border-radius: 8px 0 0 8px; }
+    .resize-right { right: 0; border-radius: 0 8px 8px 0; }
 
     .segment input[type=text] {
       width: 100%;
@@ -247,6 +265,8 @@
 
     let drag = null;
     let pendingEl = null;
+    let moveDrag = null;
+    let resizeDrag = null;
 
     let selectedKey = null;
 
@@ -259,8 +279,7 @@
       selectedKey = {ri, si};
       const el = getSegmentEl(ri, si);
       if (!el) return;
-      el.style.outline = '2px dotted white';
-      el.style.zIndex = '200';
+      el.classList.add('selected');
       closePalettes();
       el.appendChild(buildPalette(ri, si, rows[ri].segments[si]));
       el.querySelector('input').focus();
@@ -268,7 +287,7 @@
     function deselectSegment() {
       if (!selectedKey) return;
       const el = getSegmentEl(selectedKey.ri, selectedKey.si);
-      if (el) {el.style.outline = ''; el.style.zIndex = ''; closePalettes(); el.querySelector('input').blur();}
+      if (el) { el.classList.remove('selected'); closePalettes(); el.querySelector('input').blur(); }
       selectedKey = null;
     }
 
@@ -358,10 +377,43 @@
       });
       el.appendChild(input);
 
+      ['left', 'right'].forEach(edge => {
+        const handle = document.createElement('div');
+        handle.className = `resize-handle resize-${edge}`;
+        handle.addEventListener('mousedown', e => {
+          e.stopPropagation();
+          e.preventDefault();
+          selectSegment(ri, si);
+          const seg = rows[ri].segments[si];
+          const from = Math.min(seg.from, seg.to);
+          const to = Math.max(seg.from, seg.to);
+          const rowEl = document.querySelector(`.row-wrap[data-ri="${ri}"]`);
+          resizeDrag = {
+            ri, si, edge, el, rowEl,
+            fixed: edge === 'left' ? to : from,
+            previewFrom: from, previewTo: to
+          };
+        });
+        el.appendChild(handle);
+      });
+
       el.addEventListener('mousedown', e => {
         e.stopPropagation();
         e.preventDefault();
         selectSegment(ri, si);
+        const seg = rows[ri].segments[si];
+        const from = Math.min(seg.from, seg.to);
+        const to = Math.max(seg.from, seg.to);
+        const rowEl = document.querySelector(`.row-wrap[data-ri="${ri}"]`);
+        const clickCell = getCellIndex(rowEl, e.clientX);
+        moveDrag = {
+          ri, si, from, to,
+          len: to - from,
+          cellOffset: Math.max(0, clickCell - from),
+          el, rowEl,
+          previewFrom: from, previewTo: to,
+          moved: false
+        };
       });
 
       return el;
@@ -422,6 +474,34 @@
     }
 
     document.addEventListener('mousemove', e => {
+      if (resizeDrag) {
+        const currentCell = getCellIndex(resizeDrag.rowEl, e.clientX);
+        const newFrom = Math.max(0, Math.min(cellCount - 1, resizeDrag.edge === 'left' ? Math.min(currentCell, resizeDrag.fixed) : resizeDrag.fixed));
+        const newTo = Math.max(0, Math.min(cellCount - 1, resizeDrag.edge === 'right' ? Math.max(currentCell, resizeDrag.fixed) : resizeDrag.fixed));
+        resizeDrag.previewFrom = newFrom;
+        resizeDrag.previewTo = newTo;
+        resizeDrag.el.style.left = (newFrom / cellCount * 100) + '%';
+        resizeDrag.el.style.width = ((newTo - newFrom + 1) / cellCount * 100) + '%';
+        document.body.style.cursor = 'ew-resize';
+        return;
+      }
+      if (moveDrag) {
+        const currentCell = getCellIndex(moveDrag.rowEl, e.clientX);
+        let newFrom = currentCell - moveDrag.cellOffset;
+        newFrom = Math.max(0, Math.min(cellCount - 1 - moveDrag.len, newFrom));
+        const newTo = newFrom + moveDrag.len;
+        if (newFrom !== moveDrag.previewFrom || newTo !== moveDrag.previewTo) {
+          if (!moveDrag.moved) {
+            moveDrag.moved = true;
+            closePalettes();
+            document.body.style.cursor = 'grabbing';
+          }
+          moveDrag.previewFrom = newFrom;
+          moveDrag.previewTo = newTo;
+          moveDrag.el.style.left = (newFrom / cellCount * 100) + '%';
+          moveDrag.el.style.width = ((newTo - newFrom + 1) / cellCount * 100) + '%';
+        }
+      }
       if (!drag) return;
       const rowEl = document.querySelector(`.row-wrap[data-ri="${drag.rowIndex}"]`);
       if (!rowEl) return;
@@ -430,6 +510,28 @@
     });
 
     document.addEventListener('mouseup', () => {
+      if (resizeDrag) {
+        rows[resizeDrag.ri].segments[resizeDrag.si].from = resizeDrag.previewFrom;
+        rows[resizeDrag.ri].segments[resizeDrag.si].to = resizeDrag.previewTo;
+        document.body.style.cursor = '';
+        renderAllRows();
+        updateShare();
+        selectSegment(resizeDrag.ri, resizeDrag.si);
+        resizeDrag = null;
+        return;
+      }
+      if (moveDrag) {
+        if (moveDrag.moved) {
+          rows[moveDrag.ri].segments[moveDrag.si].from = moveDrag.previewFrom;
+          rows[moveDrag.ri].segments[moveDrag.si].to = moveDrag.previewTo;
+          document.body.style.cursor = '';
+          renderAllRows();
+          updateShare();
+          selectSegment(moveDrag.ri, moveDrag.si);
+        }
+        moveDrag = null;
+        return;
+      }
       if (!drag) return;
       if (pendingEl) {pendingEl.remove(); pendingEl = null;}
       const from = Math.min(drag.from, drag.to);
