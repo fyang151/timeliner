@@ -29,7 +29,7 @@
     }
 
     .segment.selected {
-      box-shadow: 0 0 0 2.5px rgba(0,0,0,0.45);
+      box-shadow: 0 0 0 2.5px rgba(0, 0, 0, 0.45);
       z-index: 200;
     }
 
@@ -42,8 +42,15 @@
       z-index: 2;
     }
 
-    .resize-left { left: 0; border-radius: 8px 0 0 8px; }
-    .resize-right { right: 0; border-radius: 0 8px 8px 0; }
+    .resize-left {
+      left: 0;
+      border-radius: 8px 0 0 8px;
+    }
+
+    .resize-right {
+      right: 0;
+      border-radius: 0 8px 8px 0;
+    }
 
     .segment input[type=text] {
       width: 100%;
@@ -97,6 +104,7 @@
 
     .tick-labels {
       margin-bottom: 4px;
+      margin-right: 3rem;
     }
 
     .palette-delete {
@@ -142,6 +150,21 @@
 
     #setup-form input:focus {
       border-color: #45AAF2;
+    }
+
+    #setup-form input[type=number] {
+      -moz-appearance: textfield;
+    }
+
+    #setup-form input[type=number]::-webkit-outer-spin-button,
+    #setup-form input[type=number]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+    }
+
+    .interval-error {
+      font-size: 0.82rem;
+      color: #e74c3c;
+      font-weight: 500;
     }
 
     #share-line {
@@ -228,8 +251,9 @@
   <form id="setup-form">
     <label>Start <input type="time" id="input-start" required></label>
     <label>End <input type="time" id="input-end" required></label>
-    <label>Interval <input type="number" id="input-interval" value="15" min="1" max="240" style="width:60px">
+    <label>Interval <input type="number" id="input-interval" value="15" min="1" max="240" style="width:4ch">
       min</label>
+    <span id="interval-error" class="interval-error"></span>
   </form>
 
   <div id="tick-labels" class="tick-labels"></div>
@@ -287,7 +311,7 @@
     function deselectSegment() {
       if (!selectedKey) return;
       const el = getSegmentEl(selectedKey.ri, selectedKey.si);
-      if (el) { el.classList.remove('selected'); closePalettes(); el.querySelector('input').blur(); }
+      if (el) {el.classList.remove('selected'); closePalettes(); el.querySelector('input').blur();}
       selectedKey = null;
     }
 
@@ -571,16 +595,47 @@
     }
     setInterval(tickIndicator, 1000);
 
+    document.getElementById('setup-form').addEventListener('submit', e => e.preventDefault());
+
+    function resizeIntervalInput() {
+      const el = document.getElementById('input-interval');
+      el.style.width = Math.max(4, (el.value || '').length + 2) + 'ch';
+    }
+
+    function setIntervalError(msg) {
+      document.getElementById('interval-error').textContent = msg;
+    }
+
     function applyConfig() {
       const start = document.getElementById('input-start').value;
       const end = document.getElementById('input-end').value;
-      const interval = parseInt(document.getElementById('input-interval').value);
-      if (!start || !end || !interval || start === end) return;
+      let intervalEl = document.getElementById('input-interval');
+      let interval = parseInt(intervalEl.value);
+      setIntervalError('');
+      if (!start || !end || start === end) return;
+      if (!interval || isNaN(interval) || interval < 1) {
+        interval = 15;
+        intervalEl.value = 15;
+        resizeIntervalInput();
+      }
+      const startMin = timeToMinutes(start);
+      const endMin = timeToMinutes(end);
+      const duration = spanDuration(startMin, endMin);
+      if (interval >= duration) {
+        setIntervalError(`Interval must be less than ${duration} min`);
+        return;
+      }
       config = {start, end, interval};
       rows = [];
       buildGrid();
       updateShare();
     }
+
+    document.getElementById('input-interval').addEventListener('focus', e => {e.target.value = ''; resizeIntervalInput();});
+    document.getElementById('input-interval').addEventListener('input', resizeIntervalInput);
+    document.getElementById('input-interval').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {e.preventDefault(); applyConfig(); e.target.blur();}
+    });
     ['input-start', 'input-end', 'input-interval'].forEach(id =>
       document.getElementById(id).addEventListener('change', applyConfig)
     );
@@ -592,6 +647,7 @@
       document.getElementById('input-start').value = config.start;
       document.getElementById('input-end').value = config.end;
       document.getElementById('input-interval').value = config.interval;
+      resizeIntervalInput();
     } else {
       const startH = (new Date().getHours() + 1) % 24;
       const startMin = startH * 60;
@@ -599,6 +655,7 @@
       document.getElementById('input-start').value = minutesToTime(startMin);
       document.getElementById('input-end').value = minutesToTime(endMin);
       config = {start: minutesToTime(startMin), end: minutesToTime(endMin), interval: 15};
+      resizeIntervalInput();
     }
     buildGrid();
     updateShare();
@@ -607,7 +664,7 @@
       btn.addEventListener('click', () => {
         const val = document.getElementById(btn.dataset.target).value;
         navigator.clipboard.writeText(val).then(() => {
-          btn.classList.remove('copied');
+          btn.clsLive('copied');
           void btn.offsetWidth;
           btn.classList.add('copied');
         });

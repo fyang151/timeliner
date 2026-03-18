@@ -7,6 +7,7 @@
 
 #grid-wrap {
   position: relative;
+  margin-right: 3rem;
 }
 
 .row-wrap {
@@ -54,6 +55,7 @@
 
 .tick-labels {
   display: flex;
+  position: relative;
 }
 
 .tick-label {
@@ -75,4 +77,13 @@
   width: 1.5px;
   height: 5px;
   background: #ddd;
+}
+
+.tick-label-end {
+  position: absolute;
+  left: 100%;
+}
+
+.tick-label-end::before {
+  left: 0;
 }

@@ -23,6 +23,10 @@ function buildTickLabels(container, startMin, cellCount, interval) {
     span.textContent = minutesToTime((startMin + i * interval) % 1440);
     container.appendChild(span);
   }
+  const endSpan = document.createElement('span');
+  endSpan.className = 'tick-label tick-label-end';
+  endSpan.textContent = minutesToTime((startMin + cellCount * interval) % 1440);
+  container.appendChild(endSpan);
 }
 
 function buildRowBackground(cellCount) {
