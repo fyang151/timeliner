@@ -1,49 +1,69 @@
-function timeToMinutes(t) {
-  const [h, m] = t.split(':').map(Number);
-  return h * 60 + m;
+function timeToSeconds(t) {
+  const [h, m] = t.split(":").map(Number);
+  return 86400 + h * 3600 + m * 60;
 }
 
-function minutesToTime(m) {
-  return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+function secondsToTimeString(s) {
+  s = ((Math.floor(s) % 86400) + 86400) % 86400;
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+}
+
+function nowSeconds() {
+  const now = new Date();
+  console.log("now", now);
+  return (
+    86400 + now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
+  );
 }
 
 function decodeState(hash) {
-  try { return JSON.parse(atob(hash.replace(/^#/, ''))); } catch { return null; }
+  try {
+    return JSON.parse(atob(hash.replace(/^#/, "")));
+  } catch {
+    return null;
+  }
 }
 
-function spanDuration(startMin, endMin) {
-  return endMin > startMin ? endMin - startMin : endMin + 1440 - startMin;
+function spanDuration(startSec, endSec) {
+  return endSec > startSec ? endSec - startSec : endSec + 86400 - startSec;
 }
 
-function buildTickLabels(container, startMin, cellCount, interval) {
-  container.innerHTML = '';
+function buildTickLabels(container, startSec, cellCount, intervalSec) {
+  container.innerHTML = "";
   for (let i = 0; i < cellCount; i++) {
-    const span = document.createElement('span');
-    span.className = 'tick-label';
-    span.textContent = minutesToTime((startMin + i * interval) % 1440);
+    const span = document.createElement("span");
+    span.className = "tick-label";
+    span.textContent = secondsToTimeString(startSec + i * intervalSec);
     container.appendChild(span);
   }
-  const endSpan = document.createElement('span');
-  endSpan.className = 'tick-label tick-label-end';
-  endSpan.textContent = minutesToTime((startMin + cellCount * interval) % 1440);
+  const endSpan = document.createElement("span");
+  endSpan.className = "tick-label tick-label-end";
+  endSpan.textContent = secondsToTimeString(startSec + cellCount * intervalSec);
   container.appendChild(endSpan);
 }
 
 function buildRowBackground(cellCount) {
-  const bg = document.createElement('div');
-  bg.className = 'row-grid';
+  const bg = document.createElement("div");
+  bg.className = "row-grid";
   for (let i = 0; i < cellCount; i++) {
-    const c = document.createElement('div');
-    c.className = 'cell-bg';
+    const c = document.createElement("div");
+    c.className = "cell-bg";
     bg.appendChild(c);
   }
   return bg;
 }
 
-function updateTimeIndicator(indicatorEl, startMin, endMin, nowMin) {
-  const duration = spanDuration(startMin, endMin);
-  const elapsed = nowMin >= startMin ? nowMin - startMin : nowMin + 1440 - startMin;
-  if (elapsed < 0 || elapsed > duration) { indicatorEl.style.display = 'none'; return; }
-  indicatorEl.style.left = (elapsed / duration * 100) + '%';
-  indicatorEl.style.display = 'block';
+function updateTimeIndicator(indicatorEl, startSec, endSec, nowSec) {
+  console.log(startSec, endSec, nowSec);
+  const duration = spanDuration(startSec, endSec);
+  const elapsed =
+    nowSec >= startSec ? nowSec - startSec : nowSec + 86400 - startSec;
+  if (elapsed < 0 || elapsed > duration) {
+    indicatorEl.style.display = "none";
+    return;
+  }
+  indicatorEl.style.left = (elapsed / duration) * 100 + "%";
+  indicatorEl.style.display = "block";
 }

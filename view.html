@@ -54,10 +54,12 @@
     };
     const shapeStyle = SHAPE_STYLES[state.shape] ?? SHAPE_STYLES.rounded;
 
+    if (state.indicatorColor) {
+      document.getElementById('time-indicator').style.background = state.indicatorColor;
+    }
+
     const {start, end, interval, rows} = state;
-    const startMin = timeToMinutes(start);
-    const endMin = timeToMinutes(end);
-    const cellCount = Math.floor(spanDuration(startMin, endMin) / interval);
+    const cellCount = Math.floor(spanDuration(start, end) / interval);
 
     const grid = document.getElementById('grid');
     (rows || []).forEach(row => {
@@ -87,12 +89,11 @@
       grid.appendChild(wrap);
     });
 
-    buildTickLabels(document.getElementById('tick-labels'), startMin, cellCount, interval);
+    buildTickLabels(document.getElementById('tick-labels'), start, cellCount, interval);
 
     const indicator = document.getElementById('time-indicator');
     function tick() {
-      const now = new Date();
-      updateTimeIndicator(indicator, startMin, endMin, now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60);
+      updateTimeIndicator(indicator, start, end, nowSeconds());
     }
     tick();
     setInterval(tick, 1000);

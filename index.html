@@ -7,7 +7,8 @@
   <title>Timeliner – Editor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&family=Pacifico&family=Playfair+Display:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&family=Pacifico&family=Playfair+Display:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="styles.css">
   <style>
     * {
@@ -138,6 +139,34 @@
       height: 13px;
       background: #45AAF2;
       flex-shrink: 0;
+    }
+
+    #time-indicator-color-bar {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+      margin-bottom: 12px;
+      margin-right: 3rem;
+      align-items: center;
+    }
+
+    .time-indicator-color-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.1s;
+      flex-shrink: 0;
+    }
+
+    .time-indicator-color-btn:hover {
+      transform: scale(1.15);
+    }
+
+    .time-indicator-color-btn.active {
+      border-color: #333;
+      box-shadow: 0 0 0 1px white, 0 0 0 3px #333;
     }
 
     .segment input::placeholder {
@@ -337,6 +366,7 @@
 
   <div id="font-bar"></div>
   <div id="shape-bar"></div>
+  <div id="time-indicator-color-bar"></div>
   <div id="tick-labels" class="tick-labels"></div>
   <div id="grid-wrap">
     <div id="grid"></div>
@@ -371,8 +401,8 @@
       {name: 'Pacifico', label: 'Pacifico'},
     ];
     const SHAPES = [
-      {name: 'parallelogram', label: 'Parallelogram', borderRadius: '0',   clipPath: 'polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%)'},
-      {name: 'rounded',       label: 'Rounded',       borderRadius: '8px', clipPath: 'none'},
+      {name: 'parallelogram', label: 'Parallelogram', borderRadius: '0', clipPath: 'polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%)'},
+      {name: 'rounded', label: 'Rounded', borderRadius: '8px', clipPath: 'none'},
     ];
 
     let config = null;
@@ -380,6 +410,7 @@
     let cellCount = 0;
     let selectedFont = 'Fredoka';
     let selectedShape = 'rounded';
+    let selectedIndicatorColor = '#ff4757';
 
     let drag = null;
     let pendingEl = null;
@@ -475,13 +506,30 @@
       });
     }
 
-    function encodeState() {return btoa(JSON.stringify({...config, font: selectedFont, shape: selectedShape, rows}));}
-    function viewURL() {return location.href.replace(/\/[^/]*$/, '/view.html') + '#' + encodeState();}
-
-    function virtualNowMinutes() {
-      const d = new Date();
-      return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
+    function applyIndicatorColor(color) {
+      selectedIndicatorColor = color;
+      document.getElementById('time-indicator').style.background = color;
+      document.querySelectorAll('.time-indicator-color-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.color === color);
+      });
+      updateShare();
     }
+
+    function buildIndicatorColorBar() {
+      const bar = document.getElementById('time-indicator-color-bar');
+      bar.innerHTML = '<span style="font-size: 0.78rem; color: #999; font-weight: 500; width: 90px; flex-shrink: 0;">Time marker</span>';
+      COLORS.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'time-indicator-color-btn' + (c === selectedIndicatorColor ? ' active' : '');
+        btn.dataset.color = c;
+        btn.style.background = c;
+        btn.addEventListener('click', () => applyIndicatorColor(c));
+        bar.appendChild(btn);
+      });
+    }
+
+    function encodeState() {return btoa(JSON.stringify({...config, font: selectedFont, shape: selectedShape, indicatorColor: selectedIndicatorColor, rows}));}
+    function viewURL() {return location.href.replace(/\/[^/]*$/, '/view.html') + '#' + encodeState();}
 
     function getCellIndex(rowEl, clientX) {
       const rect = rowEl.getBoundingClientRect();
@@ -754,22 +802,18 @@
     });
 
     function buildGrid() {
-      const startMin = timeToMinutes(config.start);
-      const endMin = timeToMinutes(config.end);
-      cellCount = Math.floor(spanDuration(startMin, endMin) / config.interval);
+      cellCount = Math.floor(spanDuration(config.start, config.end) / config.interval);
       if (cellCount <= 0) return;
 
-      buildTickLabels(document.getElementById('tick-labels'), startMin, cellCount, config.interval);
+      buildTickLabels(document.getElementById('tick-labels'), config.start, cellCount, config.interval);
 
       renderAllRows();
+      tickIndicator();
     }
 
     function tickIndicator() {
       if (!config) return;
-      const start = timeToMinutes(config.start);
-      const end = timeToMinutes(config.end);
-      const now = virtualNowMinutes();
-      updateTimeIndicator(document.getElementById('time-indicator'), start, end, now);
+      updateTimeIndicator(document.getElementById('time-indicator'), config.start, config.end, nowSeconds());
     }
     setInterval(tickIndicator, 1000);
 
@@ -785,25 +829,26 @@
     }
 
     function applyConfig() {
-      const start = document.getElementById('input-start').value;
-      const end = document.getElementById('input-end').value;
+      const startStr = document.getElementById('input-start').value;
+      const endStr = document.getElementById('input-end').value;
       let intervalEl = document.getElementById('input-interval');
-      let interval = parseInt(intervalEl.value);
+      let intervalMin = parseInt(intervalEl.value);
       setIntervalError('');
-      if (!start || !end || start === end) return;
-      if (!interval || isNaN(interval) || interval < 1) {
-        interval = 15;
+      if (!startStr || !endStr || startStr === endStr) return;
+      if (!intervalMin || isNaN(intervalMin) || intervalMin < 1) {
+        intervalMin = 15;
         intervalEl.value = 15;
         resizeIntervalInput();
       }
-      const startMin = timeToMinutes(start);
-      const endMin = timeToMinutes(end);
-      const duration = spanDuration(startMin, endMin);
-      if (interval >= duration) {
-        setIntervalError(`Interval must be less than ${duration} min`);
+      const startSec = timeToSeconds(startStr);
+      const endSec = timeToSeconds(endStr);
+      const intervalSec = intervalMin * 60;
+      const duration = spanDuration(startSec, endSec);
+      if (intervalSec >= duration) {
+        setIntervalError(`Interval must be less than ${Math.floor(duration / 60)} min`);
         return;
       }
-      config = {start, end, interval};
+      config = {start: startSec, end: endSec, interval: intervalSec};
       rows = [];
       buildGrid();
       updateShare();
@@ -824,23 +869,26 @@
       rows = saved.rows || [];
       selectedFont = saved.font || 'Fredoka';
       selectedShape = saved.shape || 'rounded';
-      document.getElementById('input-start').value = config.start;
-      document.getElementById('input-end').value = config.end;
-      document.getElementById('input-interval').value = config.interval;
+      selectedIndicatorColor = saved.indicatorColor || '#ff4757';
+      document.getElementById('input-start').value = secondsToTimeString(config.start);
+      document.getElementById('input-end').value = secondsToTimeString(config.end);
+      document.getElementById('input-interval').value = config.interval / 60;
       resizeIntervalInput();
     } else {
       const startH = (new Date().getHours() + 1) % 24;
-      const startMin = startH * 60;
-      const endMin = Math.min(startMin + 180, 23 * 60 + 59);
-      document.getElementById('input-start').value = minutesToTime(startMin);
-      document.getElementById('input-end').value = minutesToTime(endMin);
-      config = {start: minutesToTime(startMin), end: minutesToTime(endMin), interval: 15};
+      const startSec = 86400 + startH * 3600;
+      const endSec = Math.min(startSec + 3 * 3600, 86400 + 23 * 3600 + 59 * 60);
+      document.getElementById('input-start').value = secondsToTimeString(startSec);
+      document.getElementById('input-end').value = secondsToTimeString(endSec);
+      config = {start: startSec, end: endSec, interval: 900};
       resizeIntervalInput();
     }
     applyFont(selectedFont);
     buildFontBar();
     applyShape(selectedShape);
     buildShapeBar();
+    applyIndicatorColor(selectedIndicatorColor);
+    buildIndicatorColorBar();
     buildGrid();
     updateShare();
 
