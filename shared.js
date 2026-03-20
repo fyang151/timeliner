@@ -12,10 +12,7 @@ function secondsToTimeString(s) {
 
 function nowSeconds() {
   const now = new Date();
-  console.log("now", now);
-  return (
-    86400 + now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
-  );
+  return 86400 + now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 }
 
 function decodeState(hash) {
@@ -56,7 +53,6 @@ function buildRowBackground(cellCount) {
 }
 
 function updateTimeIndicator(indicatorEl, startSec, endSec, nowSec) {
-  console.log(startSec, endSec, nowSec);
   const duration = spanDuration(startSec, endSec);
   const elapsed =
     nowSec >= startSec ? nowSec - startSec : nowSec + 86400 - startSec;

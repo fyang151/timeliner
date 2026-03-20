@@ -210,9 +210,12 @@
       border-color: #333;
     }
 
+    #grid-wrap {
+      overflow-x: auto;
+    }
+
     .tick-labels {
       margin-bottom: 4px;
-      margin-right: 3rem;
     }
 
     .palette-delete {
@@ -371,10 +374,12 @@
   <div id="font-bar"></div>
   <div id="shape-bar"></div>
   <div id="time-indicator-color-bar"></div>
-  <div id="tick-labels" class="tick-labels"></div>
   <div id="grid-wrap">
-    <div id="grid"></div>
-    <div id="time-indicator"></div>
+    <div id="zoom-inner">
+      <div id="tick-labels" class="tick-labels"></div>
+      <div id="grid"></div>
+      <div id="time-indicator"></div>
+    </div>
   </div>
 
   <div id="share-line" style="display:none">
@@ -423,6 +428,7 @@
 
     let scrollMode = false;
     let scrollWindow = 3600;
+    let zoomLevel = 1;
 
     let selectedKey = null;
 
@@ -838,7 +844,7 @@
     function applyConfig() {
       const startStr = document.getElementById('input-start').value;
       const endStr = document.getElementById('input-end').value;
-      let intervalEl = document.getElementById('input-interval');
+      const intervalEl = document.getElementById('input-interval');
       let intervalMin = parseInt(intervalEl.value);
       setIntervalError('');
       if (!startStr || !endStr || startStr === endStr) return;
@@ -857,6 +863,8 @@
       }
       config = {start: startSec, end: endSec, interval: intervalSec};
       rows = [];
+      zoomLevel = 1;
+      document.getElementById('zoom-inner').style.width = '100%';
       buildGrid();
       updateShare();
     }
@@ -879,6 +887,20 @@
     ['input-start', 'input-end', 'input-interval'].forEach(id =>
       document.getElementById(id).addEventListener('change', applyConfig)
     );
+
+    document.getElementById('grid-wrap').addEventListener('wheel', e => {
+      if (!config) return;
+      e.preventDefault();
+      const wrap = document.getElementById('grid-wrap');
+      const inner = document.getElementById('zoom-inner');
+      const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      const wrapLeft = wrap.getBoundingClientRect().left;
+      const cursorX = e.clientX - wrapLeft + wrap.scrollLeft;
+      const ratio = cursorX / inner.offsetWidth;
+      zoomLevel = Math.max(1, Math.min(20, zoomLevel * factor));
+      inner.style.width = (zoomLevel * 100) + '%';
+      wrap.scrollLeft = ratio * inner.offsetWidth - (e.clientX - wrapLeft);
+    }, {passive: false});
 
     const saved = decodeState(location.hash);
     if (saved) {
@@ -918,7 +940,7 @@
       btn.addEventListener('click', () => {
         const val = document.getElementById(btn.dataset.target).value;
         navigator.clipboard.writeText(val).then(() => {
-          btn.clsLive('copied');
+          btn.classList.remove('copied');
           void btn.offsetWidth;
           btn.classList.add('copied');
         });

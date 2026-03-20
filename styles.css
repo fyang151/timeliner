@@ -87,7 +87,8 @@
   left: 0;
 }
 
-#scroll-inner {
+#scroll-inner,
+#zoom-inner {
   position: relative;
   width: 100%;
 }
