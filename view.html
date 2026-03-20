@@ -7,7 +7,8 @@
   <title>Timeliner</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&family=Pacifico&family=Playfair+Display:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&family=Pacifico&family=Playfair+Display:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="styles.css">
   <style>
     #grid-wrap {
@@ -37,9 +38,11 @@
 
 <body>
   <div id="grid-wrap">
-    <div id="grid"></div>
+    <div id="scroll-inner">
+      <div id="grid"></div>
+      <div id="tick-labels" class="tick-labels"></div>
+    </div>
     <div id="time-indicator"></div>
-    <div id="tick-labels" class="tick-labels"></div>
   </div>
 
   <script src="shared.js"></script>
@@ -49,8 +52,8 @@
 
     if (state.font) document.documentElement.style.setProperty('--seg-font', `'${state.font}'`);
     const SHAPE_STYLES = {
-      parallelogram: {borderRadius: '0',   clipPath: 'polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%)'},
-      rounded:       {borderRadius: '8px', clipPath: 'none'},
+      parallelogram: {borderRadius: '0', clipPath: 'polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%)'},
+      rounded: {borderRadius: '8px', clipPath: 'none'},
     };
     const shapeStyle = SHAPE_STYLES[state.shape] ?? SHAPE_STYLES.rounded;
 
@@ -91,12 +94,33 @@
 
     buildTickLabels(document.getElementById('tick-labels'), start, cellCount, interval);
 
+    const scrollMode = !!state.scrollMode;
+    const scrollWindow = state.scrollWindow || 3600;
+    const totalDuration = spanDuration(start, end);
     const indicator = document.getElementById('time-indicator');
-    function tick() {
-      updateTimeIndicator(indicator, start, end, nowSeconds());
+
+    if (scrollMode) {
+      indicator.style.display = 'none';
+      document.getElementById('grid-wrap').classList.add('scroll-mode');
+      document.getElementById('scroll-inner').style.width = (totalDuration / scrollWindow * 100) + '%';
+
+      function scrollTick() {
+        const now = nowSeconds();
+        const elapsed = now >= start ? now - start : now + 86400 - start;
+        const clamped = Math.max(0, Math.min(elapsed, totalDuration));
+        const offsetPct = (clamped / totalDuration) * 100;
+        document.getElementById('scroll-inner').style.transform =
+          'translateX(-' + offsetPct + '%)';
+      }
+      scrollTick();
+      setInterval(scrollTick, 1000);
+    } else {
+      function tick() {
+        updateTimeIndicator(indicator, start, end, nowSeconds());
+      }
+      tick();
+      setInterval(tick, 1000);
     }
-    tick();
-    setInterval(tick, 1000);
   </script>
 </body>
 

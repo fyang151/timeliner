@@ -86,3 +86,12 @@
 .tick-label-end::before {
   left: 0;
 }
+
+#scroll-inner {
+  position: relative;
+  width: 100%;
+}
+
+#grid-wrap.scroll-mode {
+  overflow: hidden;
+}

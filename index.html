@@ -361,6 +361,10 @@
     <label>End <input type="time" id="input-end" required></label>
     <label>Interval <input type="number" id="input-interval" value="15" min="1" max="240" style="width:4ch">
       min</label>
+    <label><input type="checkbox" id="input-scroll-mode"> Scroll</label>
+    <label id="scroll-window-label" style="display:none">
+      Window <input type="number" id="input-scroll-window" value="60" min="1" max="1440" step="1" style="width:4ch"> min
+    </label>
     <span id="interval-error" class="interval-error"></span>
   </form>
 
@@ -416,6 +420,9 @@
     let pendingEl = null;
     let moveDrag = null;
     let resizeDrag = null;
+
+    let scrollMode = false;
+    let scrollWindow = 3600;
 
     let selectedKey = null;
 
@@ -528,7 +535,7 @@
       });
     }
 
-    function encodeState() {return btoa(JSON.stringify({...config, font: selectedFont, shape: selectedShape, indicatorColor: selectedIndicatorColor, rows}));}
+    function encodeState() {return btoa(JSON.stringify({...config, font: selectedFont, shape: selectedShape, indicatorColor: selectedIndicatorColor, scrollMode, scrollWindow, rows}));}
     function viewURL() {return location.href.replace(/\/[^/]*$/, '/view.html') + '#' + encodeState();}
 
     function getCellIndex(rowEl, clientX) {
@@ -859,6 +866,16 @@
     document.getElementById('input-interval').addEventListener('keydown', e => {
       if (e.key === 'Enter') {e.preventDefault(); applyConfig(); e.target.blur();}
     });
+    document.getElementById('input-scroll-mode').addEventListener('change', e => {
+      scrollMode = e.target.checked;
+      document.getElementById('scroll-window-label').style.display = scrollMode ? '' : 'none';
+      updateShare();
+    });
+    document.getElementById('input-scroll-window').addEventListener('input', e => {
+      const val = parseInt(e.target.value);
+      if (val >= 1) {scrollWindow = val * 60; updateShare();}
+    });
+
     ['input-start', 'input-end', 'input-interval'].forEach(id =>
       document.getElementById(id).addEventListener('change', applyConfig)
     );
@@ -870,6 +887,11 @@
       selectedFont = saved.font || 'Fredoka';
       selectedShape = saved.shape || 'rounded';
       selectedIndicatorColor = saved.indicatorColor || '#ff4757';
+      scrollMode = !!saved.scrollMode;
+      scrollWindow = saved.scrollWindow || 3600;
+      document.getElementById('input-scroll-mode').checked = scrollMode;
+      document.getElementById('input-scroll-window').value = scrollWindow / 60;
+      document.getElementById('scroll-window-label').style.display = scrollMode ? '' : 'none';
       document.getElementById('input-start').value = secondsToTimeString(config.start);
       document.getElementById('input-end').value = secondsToTimeString(config.end);
       document.getElementById('input-interval').value = config.interval / 60;
