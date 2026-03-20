@@ -5,6 +5,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Timeliner – Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&family=Pacifico&family=Playfair+Display:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="styles.css">
   <style>
     * {
@@ -29,7 +32,7 @@
     }
 
     .segment.selected {
-      box-shadow: 0 0 0 2.5px rgba(0, 0, 0, 0.45);
+      filter: drop-shadow(0 0 0 2.5px rgba(0, 0, 0, 0.45));
       z-index: 200;
     }
 
@@ -59,10 +62,82 @@
       padding: 0 10px;
       font-size: 1rem;
       font-weight: 500;
+      font-family: var(--seg-font, 'Fredoka'), sans-serif;
       color: white;
       outline: none;
       min-width: 0;
       pointer-events: none;
+    }
+
+    #font-bar {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      margin-bottom: 6px;
+      margin-right: 3rem;
+      flex-wrap: wrap;
+    }
+
+    .font-btn {
+      padding: 3px 11px;
+      border: 2px solid #ebebeb;
+      border-radius: 20px;
+      background: white;
+      cursor: pointer;
+      font-size: 0.88rem;
+      color: #666;
+      transition: border-color 0.15s, color 0.15s;
+      line-height: 1.5;
+    }
+
+    .font-btn:hover {
+      border-color: #ccc;
+      color: #333;
+    }
+
+    .font-btn.active {
+      border-color: #45AAF2;
+      color: #333;
+    }
+
+    #shape-bar {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+      margin-bottom: 14px;
+      margin-right: 3rem;
+    }
+
+    .shape-btn {
+      padding: 5px 11px;
+      border: 2px solid #ebebeb;
+      border-radius: 20px;
+      background: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: #666;
+      font-size: 0.88rem;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .shape-btn:hover {
+      border-color: #ccc;
+      color: #333;
+    }
+
+    .shape-btn.active {
+      border-color: #45AAF2;
+      color: #333;
+    }
+
+    .shape-preview {
+      display: inline-block;
+      width: 26px;
+      height: 13px;
+      background: #45AAF2;
+      flex-shrink: 0;
     }
 
     .segment input::placeholder {
@@ -75,7 +150,7 @@
 
     .palette {
       position: absolute;
-      top: calc(100% + 6px);
+      top: 0;
       left: 0;
       display: flex;
       gap: 6px;
@@ -260,6 +335,8 @@
     <span id="interval-error" class="interval-error"></span>
   </form>
 
+  <div id="font-bar"></div>
+  <div id="shape-bar"></div>
   <div id="tick-labels" class="tick-labels"></div>
   <div id="grid-wrap">
     <div id="grid"></div>
@@ -286,10 +363,23 @@
   <script src="shared.js"></script>
   <script>
     const COLORS = ['#FF6B6B', '#FF9F43', '#FECA57', '#26de81', '#2BCBBA', '#45AAF2', '#A55EEA', '#FD79A8', '#000000', '#FFFFFF'];
+    const FONTS = [
+      {name: 'Fredoka', label: 'Fredoka'},
+      {name: 'Inter', label: 'Inter'},
+      {name: 'Roboto Mono', label: 'Mono'},
+      {name: 'Playfair Display', label: 'Playfair'},
+      {name: 'Pacifico', label: 'Pacifico'},
+    ];
+    const SHAPES = [
+      {name: 'parallelogram', label: 'Parallelogram', borderRadius: '0',   clipPath: 'polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%)'},
+      {name: 'rounded',       label: 'Rounded',       borderRadius: '8px', clipPath: 'none'},
+    ];
 
     let config = null;
     let rows = [];
     let cellCount = 0;
+    let selectedFont = 'Fredoka';
+    let selectedShape = 'rounded';
 
     let drag = null;
     let pendingEl = null;
@@ -317,10 +407,15 @@
       el.classList.add('selected');
       closePalettes();
       const pal = buildPalette(ri, si, rows[ri].segments[si]);
-      el.appendChild(pal);
+      const gridWrap = document.getElementById('grid-wrap');
+      gridWrap.appendChild(pal);
+      const segRect = el.getBoundingClientRect();
+      const wrapRect = gridWrap.getBoundingClientRect();
+      pal.style.top = (segRect.bottom - wrapRect.top + 6) + 'px';
+      pal.style.left = (segRect.left - wrapRect.left) + 'px';
       const r = pal.getBoundingClientRect();
       const overflow = r.right - window.innerWidth + 8;
-      if (overflow > 0) pal.style.left = (-overflow) + 'px';
+      if (overflow > 0) pal.style.left = (segRect.left - wrapRect.left - overflow) + 'px';
       el.querySelector('input').focus();
     }
     function deselectSegment() {
@@ -330,7 +425,57 @@
       selectedKey = null;
     }
 
-    function encodeState() {return btoa(JSON.stringify({...config, rows}));}
+    function applyFont(fontName) {
+      selectedFont = fontName;
+      document.documentElement.style.setProperty('--seg-font', `'${fontName}'`);
+      document.querySelectorAll('.font-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.font === fontName);
+      });
+      updateShare();
+    }
+
+    function buildFontBar() {
+      const bar = document.getElementById('font-bar');
+      bar.innerHTML = '';
+      FONTS.forEach(f => {
+        const btn = document.createElement('button');
+        btn.className = 'font-btn' + (f.name === selectedFont ? ' active' : '');
+        btn.dataset.font = f.name;
+        btn.textContent = f.label;
+        btn.style.fontFamily = `'${f.name}', sans-serif`;
+        btn.addEventListener('click', () => applyFont(f.name));
+        bar.appendChild(btn);
+      });
+    }
+
+    function applyShape(shapeName) {
+      selectedShape = shapeName;
+      document.querySelectorAll('.shape-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.shape === shapeName);
+      });
+      if (cellCount > 0) renderAllRows();
+      updateShare();
+    }
+
+    function buildShapeBar() {
+      const bar = document.getElementById('shape-bar');
+      bar.innerHTML = '';
+      SHAPES.forEach(s => {
+        const btn = document.createElement('button');
+        btn.className = 'shape-btn' + (s.name === selectedShape ? ' active' : '');
+        btn.dataset.shape = s.name;
+        const preview = document.createElement('span');
+        preview.className = 'shape-preview';
+        preview.style.borderRadius = s.borderRadius;
+        preview.style.clipPath = s.clipPath;
+        btn.appendChild(preview);
+        btn.appendChild(document.createTextNode(s.label));
+        btn.addEventListener('click', () => applyShape(s.name));
+        bar.appendChild(btn);
+      });
+    }
+
+    function encodeState() {return btoa(JSON.stringify({...config, font: selectedFont, shape: selectedShape, rows}));}
     function viewURL() {return location.href.replace(/\/[^/]*$/, '/view.html') + '#' + encodeState();}
 
     function virtualNowMinutes() {
@@ -380,6 +525,7 @@
       del.innerHTML = '<img src="icons/trash.svg">';
       del.addEventListener('mousedown', ev => {
         ev.stopPropagation();
+        closePalettes();
         rows[ri].segments.splice(si, 1);
         if (!rows[ri].segments.length) rows.splice(ri, 1);
         renderAllRows();
@@ -398,6 +544,9 @@
       el.style.left = (from / cellCount * 100) + '%';
       el.style.width = ((to - from + 1) / cellCount * 100) + '%';
       el.style.background = seg.color;
+      const shape = SHAPES.find(s => s.name === selectedShape) ?? SHAPES[1];
+      el.style.borderRadius = shape.borderRadius;
+      el.style.clipPath = shape.clipPath;
 
       const input = document.createElement('input');
       input.type = 'text';
@@ -407,8 +556,19 @@
       input.addEventListener('input', () => {rows[ri].segments[si].label = input.value; updateShare();});
       input.addEventListener('keydown', e => {
         if (e.key === 'Enter') {deselectSegment(); return;}
+        if (e.key === 'Delete' && !e.shiftKey) {
+          e.preventDefault();
+          closePalettes();
+          selectedKey = null;
+          rows[ri].segments.splice(si, 1);
+          if (!rows[ri].segments.length) rows.splice(ri, 1);
+          renderAllRows();
+          updateShare();
+          return;
+        }
         if (e.key === 'Backspace' && input.value === '') {
           e.preventDefault();
+          closePalettes();
           selectedKey = null;
           rows[ri].segments.splice(si, 1);
           if (!rows[ri].segments.length) rows.splice(ri, 1);
@@ -488,6 +648,9 @@
         pendingEl.className = 'segment';
         pendingEl.style.background = COLORS[0];
         pendingEl.style.opacity = '0.6';
+        const pendingShape = SHAPES.find(s => s.name === selectedShape) ?? SHAPES[1];
+        pendingEl.style.borderRadius = pendingShape.borderRadius;
+        pendingEl.style.clipPath = pendingShape.clipPath;
         rowEl.appendChild(pendingEl);
         updatePendingEl(rowEl);
       });
@@ -659,6 +822,8 @@
     if (saved) {
       config = {start: saved.start, end: saved.end, interval: saved.interval};
       rows = saved.rows || [];
+      selectedFont = saved.font || 'Fredoka';
+      selectedShape = saved.shape || 'rounded';
       document.getElementById('input-start').value = config.start;
       document.getElementById('input-end').value = config.end;
       document.getElementById('input-interval').value = config.interval;
@@ -672,6 +837,10 @@
       config = {start: minutesToTime(startMin), end: minutesToTime(endMin), interval: 15};
       resizeIntervalInput();
     }
+    applyFont(selectedFont);
+    buildFontBar();
+    applyShape(selectedShape);
+    buildShapeBar();
     buildGrid();
     updateShare();
 

@@ -5,6 +5,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Timeliner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&family=Pacifico&family=Playfair+Display:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="styles.css">
   <style>
     #grid-wrap {
@@ -19,6 +22,7 @@
       padding: 0 10px;
       font-size: 1rem;
       font-weight: 500;
+      font-family: var(--seg-font, 'Fredoka'), sans-serif;
       color: white;
       white-space: nowrap;
       overflow: hidden;
@@ -43,6 +47,13 @@
     const state = decodeState(location.hash);
     if (!state) {document.body.innerHTML = '<p>No timeline data.</p>'; throw new Error('no data');}
 
+    if (state.font) document.documentElement.style.setProperty('--seg-font', `'${state.font}'`);
+    const SHAPE_STYLES = {
+      parallelogram: {borderRadius: '0',   clipPath: 'polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%)'},
+      rounded:       {borderRadius: '8px', clipPath: 'none'},
+    };
+    const shapeStyle = SHAPE_STYLES[state.shape] ?? SHAPE_STYLES.rounded;
+
     const {start, end, interval, rows} = state;
     const startMin = timeToMinutes(start);
     const endMin = timeToMinutes(end);
@@ -62,6 +73,8 @@
         el.style.left = (from / cellCount * 100) + '%';
         el.style.width = ((to - from + 1) / cellCount * 100) + '%';
         el.style.background = seg.color;
+        el.style.borderRadius = shapeStyle.borderRadius;
+        el.style.clipPath = shapeStyle.clipPath;
         if (seg.label) {
           const lbl = document.createElement('span');
           lbl.className = 'seg-label';
