@@ -51,6 +51,7 @@
     if (!state) {document.body.innerHTML = '<p>No timeline data.</p>'; throw new Error('no data');}
 
     if (state.font) document.documentElement.style.setProperty('--seg-font', `'${state.font}'`);
+    if (state.tickColor) document.documentElement.style.setProperty('--tick-color', state.tickColor);
     const SHAPE_STYLES = {
       parallelogram: {borderRadius: '0', clipPath: 'polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%)'},
       rounded: {borderRadius: '8px', clipPath: 'none'},

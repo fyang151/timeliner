@@ -141,7 +141,8 @@
       flex-shrink: 0;
     }
 
-    #time-indicator-color-bar {
+    #time-indicator-color-bar,
+    #tick-color-bar {
       display: flex;
       gap: 6px;
       margin-top: 6px;
@@ -374,6 +375,7 @@
   <div id="font-bar"></div>
   <div id="shape-bar"></div>
   <div id="time-indicator-color-bar"></div>
+  <div id="tick-color-bar"></div>
   <div id="grid-wrap">
     <div id="zoom-inner">
       <div id="tick-labels" class="tick-labels"></div>
@@ -420,6 +422,7 @@
     let selectedFont = 'Fredoka';
     let selectedShape = 'rounded';
     let selectedIndicatorColor = '#ff4757';
+    let selectedTickColor = '#bbbbbb';
 
     let drag = null;
     let pendingEl = null;
@@ -528,6 +531,29 @@
       updateShare();
     }
 
+    function applyTickColor(color) {
+      selectedTickColor = color;
+      document.documentElement.style.setProperty('--tick-color', color);
+      document.querySelectorAll('.tick-color-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.color === color);
+      });
+      updateShare();
+    }
+
+    function buildTickColorBar() {
+      const bar = document.getElementById('tick-color-bar');
+      bar.innerHTML = '<span style="font-size: 0.78rem; color: #999; font-weight: 500; width: 90px; flex-shrink: 0;">Tick times</span>';
+      COLORS.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'time-indicator-color-btn tick-color-btn' + (c === selectedTickColor ? ' active' : '');
+        btn.dataset.color = c;
+        btn.style.background = c;
+        if (c === '#FFFFFF') btn.style.borderColor = '#ddd';
+        btn.addEventListener('click', () => applyTickColor(c));
+        bar.appendChild(btn);
+      });
+    }
+
     function buildIndicatorColorBar() {
       const bar = document.getElementById('time-indicator-color-bar');
       bar.innerHTML = '<span style="font-size: 0.78rem; color: #999; font-weight: 500; width: 90px; flex-shrink: 0;">Time marker</span>';
@@ -536,12 +562,13 @@
         btn.className = 'time-indicator-color-btn' + (c === selectedIndicatorColor ? ' active' : '');
         btn.dataset.color = c;
         btn.style.background = c;
+        if (c === '#FFFFFF') btn.style.borderColor = '#ddd';
         btn.addEventListener('click', () => applyIndicatorColor(c));
         bar.appendChild(btn);
       });
     }
 
-    function encodeState() {return btoa(JSON.stringify({...config, font: selectedFont, shape: selectedShape, indicatorColor: selectedIndicatorColor, scrollMode, scrollWindow, rows}));}
+    function encodeState() {return btoa(JSON.stringify({...config, font: selectedFont, shape: selectedShape, indicatorColor: selectedIndicatorColor, tickColor: selectedTickColor, scrollMode, scrollWindow, rows}));}
     function viewURL() {return location.href.replace(/\/[^/]*$/, '/view.html') + '#' + encodeState();}
 
     function getCellIndex(rowEl, clientX) {
@@ -909,6 +936,7 @@
       selectedFont = saved.font || 'Fredoka';
       selectedShape = saved.shape || 'rounded';
       selectedIndicatorColor = saved.indicatorColor || '#ff4757';
+      selectedTickColor = saved.tickColor || '#bbbbbb';
       scrollMode = !!saved.scrollMode;
       scrollWindow = saved.scrollWindow || 3600;
       document.getElementById('input-scroll-mode').checked = scrollMode;
@@ -933,6 +961,8 @@
     buildShapeBar();
     applyIndicatorColor(selectedIndicatorColor);
     buildIndicatorColorBar();
+    applyTickColor(selectedTickColor);
+    buildTickColorBar();
     buildGrid();
     updateShare();
 

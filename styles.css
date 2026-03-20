@@ -60,7 +60,8 @@
 .tick-label {
   flex: 1;
   font-size: 0.78rem;
-  color: #bbb;
+  color: var(--tick-color, #bbb);
+  font-family: var(--seg-font, 'Fredoka'), sans-serif;
   white-space: nowrap;
   overflow: visible;
   padding-top: 6px;
