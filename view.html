@@ -11,8 +11,41 @@
     href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&family=Pacifico&family=Playfair+Display:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="styles.css">
   <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+
     #grid-wrap {
-      margin: 20px 3rem 20px 20px;
+      height: 100%;
+      box-sizing: border-box;
+      padding: 10px 3rem 10px 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #scroll-inner {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    #grid {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .row-wrap {
+      flex: 1;
+      height: auto;
+    }
+
+    .tick-labels {
+      margin-bottom: 4px;
     }
 
     .segment {
@@ -29,18 +62,14 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-
-    .tick-labels {
-      margin-top: 4px;
-    }
   </style>
 </head>
 
 <body>
   <div id="grid-wrap">
     <div id="scroll-inner">
-      <div id="grid"></div>
       <div id="tick-labels" class="tick-labels"></div>
+      <div id="grid"></div>
     </div>
     <div id="time-indicator"></div>
   </div>
@@ -65,6 +94,8 @@
     const {start, end, interval, rows} = state;
     const cellCount = Math.floor(spanDuration(start, end) / interval);
 
+    buildTickLabels(document.getElementById('tick-labels'), start, cellCount, interval);
+
     const grid = document.getElementById('grid');
     (rows || []).forEach(row => {
       const wrap = document.createElement('div');
@@ -84,6 +115,7 @@
         if (seg.label) {
           const lbl = document.createElement('span');
           lbl.className = 'seg-label';
+          if (needsDarkText(seg.color)) lbl.style.color = '#111';
           lbl.textContent = seg.label;
           el.appendChild(lbl);
         }
@@ -92,8 +124,6 @@
 
       grid.appendChild(wrap);
     });
-
-    buildTickLabels(document.getElementById('tick-labels'), start, cellCount, interval);
 
     const scrollMode = !!state.scrollMode;
     const scrollWindow = state.scrollWindow || 3600;
