@@ -849,7 +849,7 @@
       if (!config) return;
       updateTimeIndicator(document.getElementById('time-indicator'), config.start, config.end, nowSeconds());
     }
-    setInterval(tickIndicator, 1000);
+    setInterval(tickIndicator, 10);
 
     document.getElementById('setup-form').addEventListener('submit', e => e.preventDefault());
 

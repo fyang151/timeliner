@@ -19,7 +19,7 @@ function secondsToTimeString(s) {
 
 function nowSeconds() {
   const now = new Date();
-  return 86400 + now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+  return 86400 + now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds() + now.getMilliseconds() / 1000;
 }
 
 function decodeState(hash) {

@@ -11,7 +11,8 @@
     href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&family=Pacifico&family=Playfair+Display:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="styles.css">
   <style>
-    html, body {
+    html,
+    body {
       height: 100%;
       margin: 0;
       overflow: hidden;
@@ -61,6 +62,24 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    #grid-wrap.scroll-mode .seg-label {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      text-overflow: unset;
+    }
+
+    #grid-wrap.scroll-mode .seg-label>span {
+      flex-shrink: 0;
+      padding: 0 10px;
+      white-space: nowrap;
     }
   </style>
 </head>
@@ -116,7 +135,9 @@
           const lbl = document.createElement('span');
           lbl.className = 'seg-label';
           if (needsDarkText(seg.color)) lbl.style.color = '#111';
-          lbl.textContent = seg.label;
+          const txt = document.createElement('span');
+          txt.textContent = seg.label;
+          lbl.appendChild(txt);
           el.appendChild(lbl);
         }
         wrap.appendChild(el);
@@ -135,6 +156,8 @@
       document.getElementById('grid-wrap').classList.add('scroll-mode');
       document.getElementById('scroll-inner').style.width = (totalDuration / scrollWindow * 100) + '%';
 
+      const gridWrap = document.getElementById('grid-wrap');
+      const gridWrapPaddingLeft = parseFloat(getComputedStyle(gridWrap).paddingLeft);
       function scrollTick() {
         const now = nowSeconds();
         const elapsed = now >= start ? now - start : now + 86400 - start;
@@ -142,15 +165,24 @@
         const offsetPct = (clamped / totalDuration) * 100;
         document.getElementById('scroll-inner').style.transform =
           'translateX(-' + offsetPct + '%)';
+
+        const viewportLeft = gridWrap.getBoundingClientRect().left + gridWrapPaddingLeft;
+        document.querySelectorAll('#grid .segment').forEach(seg => {
+          const lbl = seg.querySelector('.seg-label');
+          if (!lbl) return;
+          lbl.style.left = Math.max(0, viewportLeft - seg.getBoundingClientRect().left) + 'px';
+          const txt = lbl.firstElementChild;
+          if (txt) lbl.style.justifyContent = txt.offsetWidth > lbl.offsetWidth ? 'flex-end' : '';
+        });
       }
       scrollTick();
-      setInterval(scrollTick, 1000);
+      setInterval(scrollTick, 10);
     } else {
       function tick() {
         updateTimeIndicator(indicator, start, end, nowSeconds());
       }
       tick();
-      setInterval(tick, 1000);
+      setInterval(tick, 10);
     }
   </script>
 </body>
